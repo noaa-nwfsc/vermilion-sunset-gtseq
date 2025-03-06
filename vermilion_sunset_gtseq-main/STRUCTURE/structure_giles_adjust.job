@@ -1,0 +1,36 @@
+#!/bin/bash
+#SBATCH --job-name=
+#SBATCH --output=StructureArrayJob.%A.%a.txt
+#SBATCH --mail-user=
+#SBATCH --mail-type=ALL
+
+# Setup array 1 to 100 jobs
+# to limit limit to 20 jobs at a time
+# use --array=1-100%20
+#SBATCH --array=1-100
+#SBATCH -c 1
+#SBATCH -t 240:00:00
+
+HOMEDIR=
+
+cd $HOMEDIR
+
+module load bio/structure/2.3.4
+
+declare -A assoc
+while IFS=, read -r -a array
+do
+    assoc[${array[0]}]="${array[1]}"
+done < structure.array.txt
+
+INFILE="combined_successful_genotyped_samples_prod1.str"
+KVAL=$(echo ${assoc[${SLURM_ARRAY_TASK_ID}]} | awk -F "|" '{print $1}')
+RNUM=$(echo ${assoc[${SLURM_ARRAY_TASK_ID}]} | awk -F "|" '{print $2}')
+NAME=$(echo ${INFILE} | sed -e 's/.str//')
+
+structure \
+    -K ${KVAL} \
+    -m mainparams \
+    -o ${NAME}.K${KVAL}.R${RNUM} \
+    -D $RANDOM \
+    > ${NAME}.K${KVAL}.R${RNUM}.log 2>&1
