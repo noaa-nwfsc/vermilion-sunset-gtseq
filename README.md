@@ -40,23 +40,8 @@ Code for all analyses and figures for the manuscript are included in [this folde
 - The weight and length of both species increased with depth, suggesting both species undergo ontogenetic migration into deeper waters.
 
 ### A snippet of the figures produced for the manuscript
-<img src="https://github.com/anita-wray/vermilion_sunset_gtseq/assets/82060951/641740c1-560a-42e1-b04e-dcbb3f699bbc" width="400" height="300" align="left">
-<img src="https://github.com/anita-wray/vermilion_sunset_gtseq/assets/82060951/a7e843c0-a90a-4fd2-814e-44308254f665" width="300" height="300" align="right">
-
-<br clear="left"/>
-
-  **Figure 1 (top left) - Map Showing The Geographic Distribution Of Vermilion (Left, Purple) And Sunset (Right, Orange) Rockfish Samples Used In This Study.**
-
-  **Figure 2 (top right) - Length Distribution Of All Vermilion And Sunset Rockfish Samples.** A two-tailed t-test revealed a significant difference between the two species (p ≈ 0, t = -96.107).
-
+![Fig6-SoCal_Map_w_points_final](https://github.com/user-attachments/assets/c03f9dd2-0c73-4233-aa51-96dc97992bb8)
+  **Figure 6 - Spatial and depth distribution for vermilion rockfish (left) and sunset rockfish (right) specimens captured in Southern California used in this study. Circle size represents the number of specimens, and color represents the depth of capture in meters. Samples without depth data were not included in this plot.**
 
 ## Disclaimer: 
-This repository is a scientific product and is not official communication of the National Oceanic and
-Atmospheric Administration, or the United States Department of Commerce. All NOAA GitHub project code
-is provided on an ‘as is’ basis and the user assumes responsibility for its use. Any claims against the
-Department of Commerce or Department of Commerce bureaus stemming from the use of this GitHub
-project will be governed by all applicable Federal law. Any reference to specific commercial products,
-processes, or services by service mark, trademark, manufacturer, or otherwise, does not constitute or imply
-their endorsement, recommendation or favoring by the Department of Commerce. The Department of
-Commerce seal and logo, or the seal and logo of a DOC bureau, shall not be used in any manner to imply
-endorsement of any commercial product or activity by DOC or the United States Government.
+This repository is a scientific product and is not official communication of the National Oceanic and Atmospheric Administration, or the United States Department of Commerce. All NOAA GitHub project code is provided on an ‘as is’ basis and the user assumes responsibility for its use. Any claims against the Department of Commerce or Department of Commerce bureaus stemming from the use of this GitHub project will be governed by all applicable Federal law. Any reference to specific commercial products, processes, or services by service mark, trademark, manufacturer, or otherwise, does not constitute or imply their endorsement, recommendation or favoring by the Department of Commerce. The Department of Commerce seal and logo, or the seal and logo of a DOC bureau, shall not be used in any manner to imply endorsement of any commercial product or activity by DOC or the United States Government.
