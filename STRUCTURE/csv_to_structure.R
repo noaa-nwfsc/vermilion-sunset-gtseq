@@ -46,21 +46,22 @@ rf_GTs_cols <- rf_GTs_QF %>%
 
 
 #Create a new column with shorter names bc STRUCTURE doesn't like long sampleID names
-rf_GTs_cols$New_Sample_ID <- gsub("-",'', rf_GTs_cols$sample_ID)
-write.csv(rf_GTs_cols, file = '~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/newsampleID_allsamples_5_1_2025.csv')
+#rf_GTs_cols$New_Sample_ID <- gsub("-",'', rf_GTs_cols$sample_ID)
+#write.csv(rf_GTs_cols, file = '~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/newsampleID_allsamples_5_1_2025.csv')
 new_sample_ID <- read.csv('~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/newsampleID_allsamples_5_1_2025.csv')
 rf_GTs_cols <- merge(rf_GTs_cols, new_sample_ID, all = F) %>%
   select(-c('X'))
 
 rf_GTs_cols <- subset(rf_GTs_cols, rf_GTs_cols$sample_ID %in% rf_GTs_QF$sample_ID)
 
+
 # df2genind drops any rows (i.e., individuals with missing data)
 # and any markers with no loci scored are dropped (i.e., SebC_36504) which
 # did not perform well outside of panel testing 
 rf_GTs_genind <- df2genind(rf_GTs_QF %>%
                              select(-drop_col), 
-                           NA.char = "0", ploidy = 2, sep = "",
-                           pop = rf_GTs_cols$pop, ind.names = rf_GTs_cols$New_Sample_ID)
+                           NA.char = "0", ploidy = 2, 
+                           sep = "", ind.names = rf_GTs_QF$sample_ID)
 
 # drop unwanted loci (i.e., "SebC_36504") see `rockfish_gtseq_messing.R`
 # SebC_36504 did not genotype in most samples across runs
@@ -75,16 +76,26 @@ rf_GTs_genind <- rf_GTs_genind[loc=common_loci]
 #Use the as.loci() function to split the genind
 rf_GTs_as_loci <- as.loci(rf_GTs_genind)
 rf_GTs_as_loci$population <- 01
+
+rf_GTs_as_loci <- rf_GTs_as_loci %>%
+  relocate(population, .before = SebC_10437)
 #Save as a .str file for structure
 write.loci(rf_GTs_as_loci, 
-              file = "~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/genotyped_2023_samples_newID_05_01_2025.str", 
+           file = "~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/genotyped_2023_samples_newID_05_06_2025.str", 
            loci.sep ="\t", quote = FALSE,
            allele.sep ="\t", na ="-9\t-9", col.names = FALSE)
 
 #Read it back in to filter the dataset
-data <- read.table(file = "~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/genotyped_2023_samples_newID_05_01_2025.str",
+data <- read.table(file = "~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/genotyped_2023_samples_newID_05_06_2025.str",
                    header = FALSE, 
                    sep = '\t')
+
+
+### Put the new sample names back in
+
+data <- merge(y = data, x = (rf_GTs_cols %>% select(c("sample_ID", 'New_Sample_ID'))), 
+              by.y = "V1", by.x = 'sample_ID') %>%
+  select(-c('sample_ID'))
 
 #Take the three columns we need for filtering
 three_cols <- c('sample_ID', 'repunit', 'Z_flag', 'collection')
@@ -141,28 +152,56 @@ verm_can_with_flagged <- rbind(vermilion, canary, metadata_merged_flag)
 ## 3. Sunset/Vermilion only with flagged individuals
 ## 4. Sunset/Canary only with flagged individuals
 ## 5. Vermilion/Canary only with flagged individuals.
-data_vermilion <- data[data$V1 %in% vermilion$New_Sample_ID,]
-data_sunset <- data[data$V1 %in% sunset$New_Sample_ID,]
-data_sun_verm_flagged <- data[data$V1 %in% sun_verm_with_flagged$New_Sample_ID,]
-data_sun_can_flagged <- data[data$V1 %in% sun_can_with_flagged$New_Sample_ID,]
-data_verm_can_flagged <- data[data$V1 %in% verm_can_with_flagged$New_Sample_ID,]
+data_vermilion <- data[data$New_Sample_ID %in% vermilion$New_Sample_ID,]
+data_sunset <- data[data$New_Sample_ID %in% sunset$New_Sample_ID,]
+data_sun_verm_flagged <- data[data$New_Sample_ID %in% sun_verm_with_flagged$New_Sample_ID,]
+data_sun_can_flagged <- data[data$New_Sample_ID %in% sun_can_with_flagged$New_Sample_ID,]
+data_verm_can_flagged <- data[data$New_Sample_ID %in% verm_can_with_flagged$New_Sample_ID,]
+
+
+############### TEST HERE VIA PCA TO MAKE SURE THE FILE IS WHAT YOU WANT #####
+new_genind<-rf_GTs_genind %>%
+  subset(indNames(rf_GTs_genind) %in% sun_verm_with_flagged$sample_ID)
+
+
+
+rf_flagged_panel_GTs_scaled <- scaleGen(new_genind, NA.method="mean")
+rf_flagged_panel_GTs_pca <- dudi.pca(rf_flagged_panel_GTs_scaled, cent = FALSE, scale = FALSE, scannf = F, nf = 10)
+
+# visualize eigenvalues
+barplot(rf_flagged_panel_GTs_pca$eig[1:50], main = "PCA eigenvalues")
+
+# save PCA results as data frame
+rf_flagged_panel_pcscores <- as.data.frame(rf_flagged_panel_GTs_pca$li) %>%
+  rownames_to_column(var = "sample_id")
+
+rf_flagged_panel_eig <- round((rf_flagged_panel_GTs_pca$eig/(sum(rf_flagged_panel_GTs_pca$eig)))*100,2)
+
+ggplot(rf_flagged_panel_pcscores, aes(Axis1, Axis2)) + 
+  geom_point() +
+  xlab(paste0("PC1 (",rf_flagged_panel_eig[1],")%", collapse = "")) + 
+  ylab(paste0("PC2 (",rf_flagged_panel_eig[2],")%", collapse = "")) +  
+  theme_grey(base_size = 10)
 
 
 
 
+######
 #Write five datasets into .str files
 write_delim(data_vermilion, 
-            file = "~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/vermilion_only_05_01_2025.str",
+            file = "~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/vermilion_only_05_06_2025.str",
             col_names = FALSE)         
 write_delim(data_sunset, 
-            file = "~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/sunset_only_05_01_2025.str",
+            file = "~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/sunset_only_05_06_2025.str",
             col_names = FALSE) 
 write_delim(data_sun_verm_flagged, 
-            file = "~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/sunset_vermilion_flagged_05_01_2025.str",
+            file = "~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/sunset_vermilion_flagged_05_06_2025.str",
             col_names = FALSE) 
 write_delim(data_sun_can_flagged,
-            file = '~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/sunset_canary_flagged_05_01_2025.str',
+            file = '~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/sunset_canary_flagged_05_06_2025.str',
             col_names = FALSE)
 write_delim(data_verm_can_flagged,
-            file = '~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/vermilion_canary_flagged_05_01_2025.str',
+            file = '~/Desktop/VermilionRF/VMSURF Species ID/QF_genotypes/vermilion_canary_flagged_05_06_2025.str',
             col_names = FALSE)
+
+
