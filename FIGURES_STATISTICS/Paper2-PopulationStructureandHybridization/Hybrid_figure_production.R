@@ -11,11 +11,10 @@ setwd("~/Desktop/VermilionRF/VMSURF Species ID/")
 in_file <- "~/Desktop/VermilionRF/VMSURF Species ID/metadata/H&L-WCGBTS Combined_Vermilion RF Finclip Metadata_SK_040125_AW.xlsx"
 
 #Set colors
-pal <- PNWColors::pnw_palette('Sunset2', 4)
 color_pal_hybrids <- c(
-                 'vermilion' = pal[1],
-                 'sunset' = pal[3], 
-                 'hybrid' = '#ee6b6e')
+  'vermilion' = '#481567FF',
+  'sunset' = '#2D708EFF', 
+  'hybrid' = '#55C667FF')
 
 #Now lets load in metadata
 passed_metadata <- read_xlsx(in_file) 
@@ -34,7 +33,7 @@ meta$Fork.length..cm. <- as.numeric(meta$Fork.length..cm.)
 
 #Convert hybrid samples to hybrid ID
 
-hybrids <- read.csv("~/Desktop/VermilionRF/VMSURF Species ID/newhybrids/ver_sun_w_hybrids/PofZ_results.csv") %>%
+hybrids <- read.csv("~/Desktop/VermilionRF/VMSURF Species ID/newhybrids/ver_sun_w_hybrids/PofZ_results_5_12_25.csv") %>%
   subset(hybridclass != 'PV') %>%
   subset(hybridclass != 'PS') %>%
   select(c('individuals', 'hybridclass'))
@@ -47,11 +46,6 @@ hybrid_id <- gsub("_", "-", hybrid_id)
 meta$`Rubias Species Call`[meta$Specimen.Num %in% hybrid_id] <- 'hybrid'
 meta$`Rubias Pop Call`[meta$Specimen.Num %in% hybrid_id] <- 'hybrid'
 
-hybs_2023 <- c('H-23-AG-V0393','H-23-AG-V0406','H-23-AG-V0556','H-23-MI-V0386','H-23-MI-V0437',
-               'H-23-MI-V0562','H-23-MI-V0652','H-23-TO-V0487','H-23-TO-V0492')
-
-meta$`Rubias Species Call`[meta$Specimen.Num %in% hybs_2023] <- 'hybrid'
-meta$`Rubias Pop Call`[meta$Specimen.Num %in% hybs_2023] <- 'hybrid'
 
 table(meta$`Rubias Species Call`)
 
@@ -62,26 +56,44 @@ meta <- meta %>%
 
 ### map
 
-world <- ne_countries(scale = "medium", returnclass = "sf")
+world <- ne_countries(scale = "large", returnclass = "sf")
+states <- ne_states(country = 'united states of america', returnclass = "sf") 
 
-ggplot(data = world) +
-  geom_sf() +
-  borders("state") +
+map <- ggplot() +
+  geom_sf(data = world) +
+  geom_sf(data = states)+
   geom_point(data = meta, aes(x = `LonDD.v2`, 
                                          y = `LatDD`, 
-                                         col = factor(`Rubias Species Call`, levels = c('sunset','hybrid','vermilion'))))+
-  coord_sf(xlim = c(-115, -125.57), ylim = c(30, 48.84), expand = FALSE) +
-  scale_x_continuous(breaks = c(-124, -120, -116)) +
+                                         col = factor(`Rubias Species Call`, 
+                                                      levels = c('sunset','hybrid','vermilion'))),
+             size = 0.5)+
+  coord_sf(xlim = c(-115, -128.5), ylim = c(30, 51), expand = FALSE) +
+  scale_x_continuous(breaks = c(-125, -120)) +
   scale_color_manual(values = color_pal_hybrids)+
   theme(
     strip.background = element_blank(),
     strip.text.x = element_blank(),
-    legend.position = c(0.9, 0.87),
+    legend.position = c(0.915, 0.87),
     legend.title=element_blank(),
     legend.spacing = unit(0, "pt"),
     axis.title.x=element_blank(),
-    axis.title.y=element_blank())+
-  facet_wrap(~factor(`Rubias Species Call`, levels = c('sunset','hybrid','vermilion')))
+    axis.title.y=element_blank(),
+    panel.border = element_rect(colour = "black", fill=NA),
+    legend.background = element_blank(),
+    legend.box.background = element_rect(colour = "black"))+
+  facet_wrap(~factor(`Rubias Species Call`, levels = c('sunset','hybrid','vermilion'))) +
+  guides(color = guide_legend(override.aes = list(size = 2)))
+
+map
+
+
+ggsave(file = "~/Desktop/VermilionRF/VMSURF Species ID/figures/pop_struct_MS/Fig3-HybridMap.jpeg",
+       width = 174,
+       height = 110,
+       units = c("mm"),
+       dpi = 900)
+map
+dev.off()
 
 df <- as.data.frame.matrix(table(meta$Site.Cell.ID, meta$`Rubias Species Call`, useNA = "ifany")) %>%
   subset(hybrid > 0 & vermilion == 0) 

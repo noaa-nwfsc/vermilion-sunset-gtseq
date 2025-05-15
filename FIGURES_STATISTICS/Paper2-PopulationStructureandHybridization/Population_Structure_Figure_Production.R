@@ -1,26 +1,22 @@
 ### Figure Production for Paper #2 on Pop Structure
 
+##### Load required packages & color pals --------------------------------------
+packages <- c('rnaturalearth', 'sf', 'patchwork', 'reshape', 'rnaturalearthdata',
+              'dplyr', 'viridis', 'tidyverse', 'wesanderson', 'vtable', 'ggsignif',
+              'readxl', 'PNWColors')
 
-#Map Building
-library("reshape")
-library(patchwork)
-library("sf")
-library("rnaturalearth")
-library("rnaturalearthdata")
-library(dplyr)
-library(viridis)
-library(tidyverse)
-theme_set(theme_bw())
-library(scatterpie)
-library(jcolors)
-library(wesanderson)
-library(vtable)
-library(ggsignif)
-library(multcompView)
+# Install packages not yet installed
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
 
+# Packages loading
+invisible(lapply(packages, library, character.only = TRUE))
+theme_set(theme_classic())
 
 #Set colors
-pal <- PNWColors::pnw_palette('Sunset2', 4)
+pal <- pnw_palette('Sunset2', 4)
 pal_species <- wes_palette("Zissou1", 4)
 color_pal_hybrids <- c('vermilion' = pal[1],
                        'sunset' = pal[3],
@@ -31,9 +27,9 @@ color_pal_hybrids2 <- c('S' = pal[1],
                         'V-A' = '#F94D00',
                         'SVH' = 'lightgreen')
 
-pal_pop_and_species <- PNWColors::pnw_palette('Cascades', 4)
+pal_pop_and_species <- pnw_palette('Cascades', 4)
 
-pops_pal <- PNWColors::pnw_palette('Cascades', 3)
+pops_pal <- pnw_palette('Cascades', 3)
 
 
 ##### Metadata ----------------------------------------------------------------
@@ -42,9 +38,9 @@ in_file <- "~/Desktop/VermilionRF/VMSURF Species ID/metadata/H&L-WCGBTS Combined
 #Now lets load in metadata
 meta <- read_xlsx(in_file) 
 
-table(meta$`Rubias Species Call`)
+#table(meta$`Rubias Species Call`)
 
-length(!is.na(meta$`Rubias Species Call`))
+#length(!is.na(meta$`Rubias Species Call`))
 
 meta <- meta %>%
   drop_na(`Rubias Species Call`) %>%
@@ -66,8 +62,8 @@ meta$collection <- as.factor(meta$collection)
 #### Mapping ------------------------------------------------------------------
 #pdf(file = "~/Desktop/VermilionRF/VMSURF Species ID/scripts/MS_2_Figures.pdf")
 #Load in the base R map
-world <- ne_countries(scale = "medium", returnclass = "sf")
-
+world <- ne_countries(scale = "large", returnclass = "sf")
+states <- ne_states(country = 'united states of america', returnclass = "sf") 
 
 # And now we graph those ones
 
@@ -98,25 +94,36 @@ combined <- combined %>%
 
 
 ## Plot the geographic distribution of the three populations of vermilion, 
-#### which we coloquially called A,B, and C :)
-vermilion_pop <- ggplot(data = world) +
-  geom_sf() +
+#### which we colloquially called A,B, and C :)
+vermilion_pop <- ggplot() +
+  geom_sf(data = world, fill = 'lightgrey') +
+  geom_sf(data = states, fill = 'lightgrey')+
   geom_count(data = vermilion, aes(x = `LonDD.v2`, y = `LatDD`, col = `collection`))+
-  coord_sf(xlim = c(-115, -125.57), ylim = c(30, 48.84), expand = FALSE) +
-  scale_x_continuous(breaks = c(-124, -120, -116))+
+  coord_sf(xlim = c(-115, -128.5), ylim = c(30, 51), expand = FALSE) +
+  scale_x_continuous(breaks = c(-125, -120))+
   facet_wrap(~collection)+
-  xlab('Longitude')+
-  ylab('Latitude') +
   scale_color_manual(values = pops_pal) +
   theme(
     strip.background = element_blank(),
     strip.text.x = element_blank(),
     legend.title=element_blank(),
-    legend.position = c(0.9, 0.8),
+    legend.position = c(0.93, 0.78),
+    legend.spacing = unit(0, "pt"),
     axis.title.x=element_blank(),
-    axis.title.y=element_blank())
+    axis.title.y=element_blank(),
+    panel.border = element_rect(colour = "black", fill=NA),
+    legend.background = element_blank(),
+    legend.box.background = element_rect(colour = "black"))
 
 vermilion_pop
+
+ggsave(file = "~/Desktop/VermilionRF/VMSURF Species ID/figures/pop_struct_MS/Fig1-PopulationMap.jpeg",
+       width = 174,
+       height = 100,
+       units = c("mm"),
+       dpi = 900)
+vermilion_pop
+dev.off()
 
 ### Do we see overlap in where these samples were caught? #####
 df <- as.data.frame(table(vermilion$Site.Cell.ID,vermilion$collection)) %>%
@@ -257,9 +264,10 @@ wt_tbl$cld <- cld$Letters
   stat_summary(fun.y="mean") +
   scale_color_manual(values = pops_pal) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, 4.6))+
-  theme(axis.title.x=element_blank())+
-    geom_text(data = length_tbl, aes(x = collection, y = c(4.4, 3.7, 4.0), label = cld), 
-              size = 4, color = "black", fontface = "bold"))
+    theme(axis.title.x=element_blank(),
+          text = element_text(size = 7.5))+
+    geom_text(data = wt_tbl, aes(x = collection, y = c(4.4, 3.9, 4.0), label = cld), 
+              size = 3, color = "black"))
 
 pairwise.t.test(x = vermilion$Wt..kg.,
                 g = vermilion$`collection`)
@@ -295,9 +303,10 @@ length_tbl$cld <- cld$Letters
   stat_summary(fun.y="mean") +
   scale_color_manual(values = pops_pal)+
   scale_y_continuous(expand = c(0, 0), limits = c(0,75))+
-  theme(axis.title.x=element_blank())+
-  geom_text(data = length_tbl, aes(x = collection, y = c(69, 67, 67), label = cld), 
-            size = 4, color = "black", fontface = "bold"))
+  theme(axis.title.x=element_blank(),
+        text = element_text(size = 7.5))+
+  geom_text(data = length_tbl, aes(x = collection, y = c(69, 68, 68), label = cld), 
+            size = 3, color = "black"))
 
 pairwise.t.test(x = vermilion$Fork.length..cm.,
                 g = vermilion$`collection`)
@@ -332,17 +341,22 @@ depth_tbl$cld <- cld$Letters
   stat_summary(fun.y="mean") +
   scale_color_manual(values = pops_pal)+
   scale_y_continuous(expand = c(0, 0), limits = c(0,200))+
-  theme(axis.title.x=element_blank()) +
+  theme(axis.title.x=element_blank(),
+        text = element_text(size = 7.5)) +
   geom_text(data = depth_tbl, aes(x = collection, y = c(68,128, 173), label = cld), 
-            size = 4, color = "black", fontface = "bold"))
+            size = 3, color = "black"))
 
-design <- "
-AB
-AC"
+pop_biological <- depth + length + weight + plot_annotation(tag_levels = 'A')
 
-depth + length + weight + plot_annotation(tag_levels = 'A') +
-  plot_layout(design = design)
 
+
+ggsave(file = "~/Desktop/VermilionRF/VMSURF Species ID/figures/pop_struct_MS/Fig2-PopulationBiological.jpeg",
+       width = 174,
+       height = 90,
+       units = c("mm"),
+       dpi = 900)
+pop_biological
+dev.off()
 
 #######
 
