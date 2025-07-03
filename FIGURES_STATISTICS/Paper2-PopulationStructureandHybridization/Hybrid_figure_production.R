@@ -1,10 +1,19 @@
-### Creates presentation ready figures
-library(readxl)
-library(dplyr)
-library(viridis)
-library(tidyverse)
-library(patchwork)
-library(plotrix)
+
+##### Load required packages & color pals --------------------------------------
+packages <- c('rnaturalearth', 'sf', 'patchwork', 'reshape', 'rnaturalearthdata',
+              'dplyr', 'tidyverse','readxl', "multcompView", 'ggsignif', 'data.table', 
+              'patchwork', 'ggOceanMaps', "tools", "dplyr", 'sp', 'readr',
+              'mapproj', 'cowplot', 'stringr')
+
+# Install packages not yet installed
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+
+# Packages loading
+invisible(lapply(packages, library, character.only = TRUE))
+theme_set(theme_classic())
 
 setwd("~/Desktop/VermilionRF/VMSURF Species ID/")
 
@@ -54,21 +63,32 @@ meta <- meta %>%
   subset(`Rubias Species Call` != 'rebs')
 
 
-### map
+##### map #####
 
 world <- ne_countries(scale = "large", returnclass = "sf")
-states <- ne_states(country = 'united states of america', returnclass = "sf") 
+#states <- ne_states(country = 'united states of america', returnclass = "sf") 
+path.eez.usa <- ("~/Desktop/VermilionRF/VMSURF Species ID/metadata/shapefiles/EEZ_land_union_v3_202003/")
+fnam.eez.usa <- "EEZ_Land_v3_202030.shp"
+eez.usa <- st_read(dsn = path.eez.usa, layer = file_path_sans_ext(fnam.eez.usa))
+# eez.usa has 259 features and 16 fields
+# A Large SpatialLinesDataFrame object with 259 features and 16 fields (3.3 Mb)
+
+# Fortify the shapefile data using `fortify.shape()`:
+dat.eez.usa1 <- fortify(eez.usa) # a 180400x22 dataframe
+labels <- read.csv(file = "~/Desktop/VermilionRF/VMSURF Species ID/metadata/paper2_labels.csv")
+map_labels <- read.csv(file = "~/Desktop/VermilionRF/VMSURF Species ID/metadata/paper2_labels_2.csv")
 
 map <- ggplot() +
+  geom_sf(data = dat.eez.usa1, size = 1.5, color = "grey", fill = 'white')+
   geom_sf(data = world) +
-  geom_sf(data = states)+
+  borders("state") +
   geom_point(data = meta, aes(x = `LonDD.v2`, 
                                          y = `LatDD`, 
                                          col = factor(`Rubias Species Call`, 
                                                       levels = c('sunset','hybrid','vermilion'))),
              size = 0.5)+
-  coord_sf(xlim = c(-115, -128.5), ylim = c(30, 51), expand = FALSE) +
-  scale_x_continuous(breaks = c(-125, -120)) +
+  coord_sf(xlim = c(-113, -128), ylim = c(29, 50.5), expand = FALSE)+
+  scale_x_continuous(breaks = c(-126, -122, -118)) +
   scale_color_manual(values = color_pal_hybrids)+
   theme(
     strip.background = element_blank(),
@@ -82,21 +102,39 @@ map <- ggplot() +
     legend.background = element_blank(),
     legend.box.background = element_rect(colour = "black"))+
   facet_wrap(~factor(`Rubias Species Call`, levels = c('sunset','hybrid','vermilion'))) +
-  guides(color = guide_legend(override.aes = list(size = 2)))
+  guides(color = guide_legend(override.aes = list(size = 2)))+
+  geom_text(data = labels, aes(label = label, x = long, y = lat), size.unit = 'mm', size = 2)+
+  geom_segment(data = labels, 
+               aes(x = start.arrow.long, y = start.arrow.lat, xend = end.arrow.long, yend = end.arrow.lat), 
+               color = 'black', size = 0.5, alpha = 0.6, arrow = arrow(length = unit(0.15, "cm"))) +
+  geom_text(data = map_labels, aes(label = label, x= long, y = lat, color = color, angle = angle), size.unit = 'mm', size = 2)
 
 map
 
 
 ggsave(file = "~/Desktop/VermilionRF/VMSURF Species ID/figures/pop_struct_MS/Fig3-HybridMap.jpeg",
-       width = 174,
+      width = 174,
        height = 110,
        units = c("mm"),
        dpi = 900)
 map
 dev.off()
 
+
+
+######################
+
+
+
+
+
 df <- as.data.frame.matrix(table(meta$Site.Cell.ID, meta$`Rubias Species Call`, useNA = "ifany")) %>%
   subset(hybrid > 0 & vermilion == 0) 
+
+
+#Change column names
+names(meta)[names(meta) == 'Rubias Species Call'] <- 'repunit'
+names(meta)[names(meta) == 'Rubias Pop Call'] <- 'collection'
 
 #Create a column which groups the samples into three size classes
 #Based on email convo with John Harms
@@ -108,36 +146,6 @@ sunverm_hybrid <- meta %>%
 #Remove data absent samples
 sunverm_hybrid_size <- sunverm_hybrid[!is.na(sunverm_hybrid$sizeclass),]
 
-df2 <- as.data.frame.matrix(table(sunverm_hybrid_size$Site.Cell.ID, sunverm_hybrid_size$`Rubias Species Call`, useNA = "ifany"))
-
-sunverm_hybrid_adult <- subset(sunverm_hybrid_size, sunverm_hybrid_size$sizeclass == 'Adult')
-#Plot
-depth <- ggplot(data = meta,
-       aes(x = factor(`Rubias Species Call`, levels = c('sunset','hybrid','vermilion')), 
-           y = `Depth..m.`,
-           col = `Rubias Species Call`)) +
-  geom_boxplot()+
-  theme_bw() +
-  theme(legend.position = 'none') +
-  #facet_wrap(~sizeclass) + 
-  ylab('Depth (m)')+
-  xlab('Species')+
-  scale_color_manual(values = color_pal_hybrids)+
-  ylim(0,350)
-
-(depth_and_size <- ggplot(data = sunverm_hybrid_size,
-       aes(x = factor(`Rubias Species Call`, levels = c('sunset','hybrid','vermilion')), 
-           y = `Depth..m.`,
-           col = `Rubias Species Call`)) +
-  geom_boxplot()+
-  theme_bw() +
-  theme(legend.position = 'none') +
-  facet_wrap(~sizeclass) + 
-  ylab('Depth (m)')+
-  xlab('Species')+
-  scale_color_manual(values = color_pal_hybrids)+
-  ylim(0,350))
-
 #Create a age class column
 sunverm_hybrid <- sunverm_hybrid %>% 
   mutate(ageclass = case_when(
@@ -146,78 +154,210 @@ sunverm_hybrid <- sunverm_hybrid %>%
   )
 #Remove data absent individuals
 sunverm_hybrid_age <- sunverm_hybrid[!is.na(sunverm_hybrid$ageclass),]
-#Plot
-depth_and_age <- ggplot(data = sunverm_hybrid_age,
-       aes(x = factor(`Rubias Species Call`, levels = c('sunset','hybrid','vermilion')),
-           y = `Depth..m.`,
-           col = `Rubias Species Call`)) +
-  geom_boxplot()+
-  theme_bw() +
-  theme(legend.position = 'none') +
-  facet_wrap(~ageclass) + 
-  ylab('Depth (m)')+
-  xlab('Species')+
-  scale_color_manual(values = color_pal_hybrids)
+
+
+
+#### stats
+# analysis of variance - weight
+anova <- aov(`Wt..kg.` ~ repunit, data = sunverm_hybrid)
+# Tukey's test
+tukey <- TukeyHSD(anova)
+# compact letter display
+cld <- multcompLetters4(anova, tukey)
+# table with factors and 3rd quantile
+wt_tbl <- group_by(sunverm_hybrid, repunit) %>%
+  summarise(depth=mean(`Wt..kg.`, na.rm = T), sd = sd(`Wt..kg.`, na.rm = T))
+# extracting the compact letter display and adding to the Tk table
+cld <- as.data.frame.list(cld$repunit)
+cld <- tibble::rownames_to_column(cld, "repunit")
+wt_tbl <- merge(wt_tbl, cld)
+
+# analysis of variance - length
+anova <- aov(`Fork.length..cm.` ~ repunit, data = sunverm_hybrid)
+# Tukey's test
+tukey <- TukeyHSD(anova)
+# compact letter display
+cld <- multcompLetters4(anova, tukey)
+# table with factors and 3rd quantile
+length_tbl <- group_by(sunverm_hybrid, repunit) %>%
+  summarise(depth=mean(`Fork.length..cm.`, na.rm = T), sd = sd(`Fork.length..cm.`, na.rm = T))
+# extracting the compact letter display and adding to the Tk table
+cld <- as.data.frame.list(cld$repunit)
+cld <- tibble::rownames_to_column(cld, "repunit")
+length_tbl <- merge(length_tbl, cld)
+
+
+# analysis of variance - depth
+anova <- aov(`Depth..m.` ~ repunit, data = sunverm_hybrid)
+# Tukey's test
+tukey <- TukeyHSD(anova)
+# compact letter display
+cld <- multcompLetters4(anova, tukey)
+# table with factors and 3rd quantile
+depth_tbl <- group_by(sunverm_hybrid, repunit) %>%
+  summarise(depth=mean(`Depth..m.`, na.rm = T), se = (sd(`Depth..m.`, na.rm = T)/sqrt(length(na.omit(`Depth..m.`)))))
+# extracting the compact letter display and adding to the Tk table
+cld <- as.data.frame.list(cld$repunit)
+cld <- tibble::rownames_to_column(cld, "repunit")
+depth_tbl <- merge(depth_tbl, cld)
 
 #Two-way anova of adult and subadult species depth differences
 adult <- sunverm_hybrid_size[sunverm_hybrid_size$sizeclass == 'Adult',]
 subadult <- sunverm_hybrid_size[sunverm_hybrid_size$sizeclass == 'Subadult',]
-adult_aov <- aov(adult$Depth..m. ~ adult$`Rubias Species Call`)
-subadult_aov <- aov(subadult$Depth..m. ~ subadult$`Rubias Species Call`)
-summary(adult_aov)
-summary(subadult_aov)
+adult_aov <- aov(`Depth..m.` ~ repunit, data = adult)
+tukey <- TukeyHSD(adult_aov)
+# compact letter display
+cld <- multcompLetters4(adult_aov, tukey)
+# extracting the compact letter display and adding to the Tk table
+cld <- as.data.frame.list(cld$repunit)
+large_depth_tbl <- tibble::rownames_to_column(cld, "repunit")%>%
+  select(c('repunit', 'Letters'))
+large_depth_tbl$sizeclass <- 'Adult'
 
-pairwise.t.test(x = adult$Depth..m.,
-                g = adult$`Rubias Species Call`)
+adult_depth_tbl <- group_by(adult, repunit) %>%
+  summarise(depth=mean(`Depth..m.`, na.rm = T), se = (sd(`Depth..m.`, na.rm = T)/sqrt(length(na.omit(`Depth..m.`)))))
 
-pairwise.t.test(x = subadult$Depth..m.,
-                g = subadult$`Rubias Species Call`)
+juv_depth_tbl <- group_by(subadult, repunit) %>%
+  summarise(depth=mean(`Depth..m.`, na.rm = T), se = (sd(`Depth..m.`, na.rm = T)/sqrt(length(na.omit(`Depth..m.`)))))
+
+subadult_aov <- aov(`Depth..m.` ~ repunit, data = subadult)
+tukey <- TukeyHSD(subadult_aov)
+# compact letter display
+cld <- multcompLetters4(subadult_aov, tukey)
+# extracting the compact letter display and adding to the Tk table
+cld <- as.data.frame.list(cld$repunit)
+small_depth_tbl <- tibble::rownames_to_column(cld, "repunit") %>%
+  select(c('repunit', 'Letters'))
+small_depth_tbl$sizeclass <- 'Subadult'
+
+
+size_depth_tbl <- rbind(large_depth_tbl, small_depth_tbl)
 
 #Two-way anova of old and young species depth differences
 old <- sunverm_hybrid_age[sunverm_hybrid_age$ageclass == 'Over 5',]
+old_aov <- aov(`Depth..m.` ~ repunit, data = old)
+tukey <- TukeyHSD(old_aov)
+# compact letter display
+cld <- multcompLetters4(old_aov, tukey)
+# extracting the compact letter display and adding to the Tk table
+cld <- as.data.frame.list(cld$repunit)
+old_depth_tbl <- tibble::rownames_to_column(cld, "repunit")%>%
+  select(c('repunit', 'Letters'))
+old_depth_tbl$ageclass <- 'Over 5'
+
+
 young <- sunverm_hybrid_age[sunverm_hybrid_age$ageclass == 'Under 5',]
+tukey <- TukeyHSD(subadult_aov)
+# compact letter display
+cld <- multcompLetters4(subadult_aov, tukey)
+# extracting the compact letter display and adding to the Tk table
+cld <- as.data.frame.list(cld$repunit)
+young_depth_tbl <- tibble::rownames_to_column(cld, "repunit")%>%
+  select(c('repunit', 'Letters'))
+young_depth_tbl$ageclass <- 'Under 5'
 
-pairwise.t.test(x = old$Depth..m.,
-                g = old$`Rubias Species Call`)
+age_depth_tbl <- rbind(old_depth_tbl, young_depth_tbl)
 
-pairwise.t.test(x = young$Depth..m.,
-                g = young$`Rubias Species Call`)
 
-pairwise.t.test(x = meta$Fork.length..cm.,
-                g = meta$`Rubias Species Call`)
 
-pairwise.t.test(x = meta$Wt..kg.,
-                g = meta$`Rubias Species Call`)
+df2 <- as.data.frame.matrix(table(sunverm_hybrid_size$Site.Cell.ID, sunverm_hybrid_size$repunit, useNA = "ifany"))
 
-length <- ggplot(data = meta,
-       aes(x = factor(`Rubias Species Call`, levels = c('sunset','hybrid','vermilion')),
-           y = `Fork.length..cm.`,
-           col = `Rubias Species Call`)) +
+sunverm_hybrid_adult <- subset(sunverm_hybrid_size, sunverm_hybrid_size$sizeclass == 'Adult')
+#Plot
+depth <- ggplot(data = meta,
+       aes(x = factor(repunit, levels = c('sunset','hybrid','vermilion')), 
+           y = `Depth..m.`,
+           col = repunit)) +
   geom_boxplot()+
-  theme_bw() +
   theme(legend.position = 'none') +
+  #facet_wrap(~sizeclass) + 
+  ylab('Depth (m)')+
+  xlab('Species')+
+  scale_color_manual(values = color_pal_hybrids)+
+  ylim(0,350)
+
+(depth_and_size <- ggplot(data = sunverm_hybrid_size,
+       aes(x = factor(repunit, levels = c('sunset','hybrid','vermilion')), 
+           y = `Depth..m.`,
+           col = repunit)) +
+  geom_boxplot()+
+  geom_text(data = size_depth_tbl, aes(x = factor(repunit, levels = c('sunset','hybrid','vermilion')),
+                                y = c(330, 225, 190, 205, 120, 150), label = Letters),
+            size = 4, color = "black") +
+  theme(legend.position = 'none',
+        axis.title.x = element_blank()) +
+  facet_wrap(~sizeclass) + 
+  ylab('Depth (m)')+
+  xlab('Species')+
+  scale_color_manual(values = color_pal_hybrids)+
+  ylim(0,350))
+
+
+#Plot
+(depth_and_age <- ggplot(data = sunverm_hybrid_age,
+       aes(x = factor(repunit, levels = c('sunset','hybrid','vermilion')),
+           y = `Depth..m.`,
+           col = repunit)) +
+  geom_boxplot()+
+  theme(legend.position = 'none',
+        axis.title.x = element_blank()) +
+  geom_text(data = age_depth_tbl, aes(x = factor(repunit, levels = c('sunset','hybrid','vermilion')),
+                                       y = c(330, 200, 180, 220, 175, 150), label = Letters),
+            size = 4, color = "black") +
+  facet_wrap(~ageclass) + 
+  ylab('Depth (m)')+
+  xlab('Species')+
+  scale_color_manual(values = color_pal_hybrids))
+
+
+
+
+
+
+
+
+(length <- ggplot(data = meta,
+       aes(x = factor(repunit, levels = c('sunset','hybrid','vermilion')),
+           y = `Fork.length..cm.`,
+           col = repunit)) +
+  geom_boxplot()+
+  theme(legend.position = 'none',
+        axis.title.x = element_blank()) +
   ylab('Fork Length (cm)')+
   xlab('Species')+
-  scale_color_manual(values = color_pal_hybrids)
+  scale_color_manual(values = color_pal_hybrids) +
+  geom_text(data = length_tbl, aes(x = repunit, y = c(62, 70, 67), label = Letters), 
+            size = 4, color = "black"))
 
-weight <- ggplot(data = meta,
-       aes(x = factor(`Rubias Species Call`, levels = c('sunset','hybrid','vermilion')),
+(weight <- ggplot(data = meta,
+       aes(x = factor(repunit, levels = c('sunset','hybrid','vermilion')),
            y = `Wt..kg.`,
-           col = `Rubias Species Call`)) +
+           col = repunit)) +
   geom_boxplot()+
-  theme_bw() +
-  theme(legend.position = 'none') +
+  theme(legend.position = 'none',
+        axis.title.x = element_blank()) +
   ylab('Weight (kg)')+
-  xlab('Species')+
-  scale_color_manual(values = color_pal_hybrids)
+  scale_color_manual(values = color_pal_hybrids)+
+  geom_text(data = wt_tbl, aes(x = repunit,
+                               y = c(4,6.5,4.5), label = Letters), 
+            size = 4, color = "black"))
 
 design <- "
 BC
 DE
 "
 
-depth_and_age + depth_and_size + length + weight + plot_layout(design = design)
+hybrid_biological <- depth_and_age + depth_and_size + length + weight + plot_layout(design = design) +
+  plot_annotation(tag_levels = 'A')
 
+
+#ggsave(file = "~/Desktop/VermilionRF/VMSURF Species ID/figures/pop_struct_MS/SuplFig1-HybridBiological.jpeg",
+#       width = 180,
+#       height = 150,
+#       units = c("mm"),
+#       dpi = 900)
+#hybrid_biological
+#dev.off()
 
 
 ### Statistics

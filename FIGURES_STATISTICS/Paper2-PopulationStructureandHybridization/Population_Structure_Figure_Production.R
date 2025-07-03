@@ -2,8 +2,10 @@
 
 ##### Load required packages & color pals --------------------------------------
 packages <- c('rnaturalearth', 'sf', 'patchwork', 'reshape', 'rnaturalearthdata',
-              'dplyr', 'viridis', 'tidyverse', 'wesanderson', 'vtable', 'ggsignif',
-              'readxl', 'PNWColors')
+              'dplyr', 'tidyverse','readxl', "multcompView", 'ggsignif', 'data.table', 
+              'patchwork', 'ggOceanMaps', "tools", "dplyr", 'sp', 'readr',
+              'mapproj', 'cowplot', 'stringr')
+
 
 # Install packages not yet installed
 installed_packages <- packages %in% rownames(installed.packages())
@@ -33,20 +35,22 @@ pops_pal <- pnw_palette('Cascades', 3)
 
 
 ##### Metadata ----------------------------------------------------------------
-in_file <- "~/Desktop/VermilionRF/VMSURF Species ID/metadata/H&L-WCGBTS Combined_Vermilion RF Finclip Metadata_SK_040125_AW.xlsx"
+in_file <- "~/Desktop/VermilionRF/VMSURF Species ID/metadata/H&L-WCGBTS Combined_Vermilion RF Finclip Metadata_SK_051525_AW.xlsx"
 
 #Now lets load in metadata
 meta <- read_xlsx(in_file) 
 
-#table(meta$`Rubias Species Call`)
-
+table(meta$repunit)
+table(meta$collection)
+nrow(meta %>% subset(is.na(repunit) & Year != 2024))
+table(meta$Year)
 #length(!is.na(meta$`Rubias Species Call`))
 
 meta <- meta %>%
-  drop_na(`Rubias Species Call`) %>%
-  subset(`Rubias Species Call` != 'rebs') %>%
-  subset(`Rubias Species Call` != 'bocaccio') %>%
-  subset(`Rubias Species Call` != 'canary')
+  drop_na(`repunit`) %>%
+  subset(`repunit` != 'rebs') %>%
+  subset(`repunit` != 'bocaccio') %>%
+  subset(`repunit` != 'canary')
 
 #Change column names
 names(meta)[names(meta) == 'Rubias Species Call'] <- 'repunit'
@@ -61,14 +65,24 @@ meta$collection <- as.factor(meta$collection)
 
 #### Mapping ------------------------------------------------------------------
 #pdf(file = "~/Desktop/VermilionRF/VMSURF Species ID/scripts/MS_2_Figures.pdf")
-#Load in the base R map
 world <- ne_countries(scale = "large", returnclass = "sf")
-states <- ne_states(country = 'united states of america', returnclass = "sf") 
+#states <- ne_states(country = 'united states of america', returnclass = "sf") 
+path.eez.usa <- ("~/Desktop/VermilionRF/VMSURF Species ID/metadata/shapefiles/EEZ_land_union_v3_202003/")
+fnam.eez.usa <- "EEZ_Land_v3_202030.shp"
+eez.usa <- st_read(dsn = path.eez.usa, layer = file_path_sans_ext(fnam.eez.usa))
+# eez.usa has 259 features and 16 fields
+# A Large SpatialLinesDataFrame object with 259 features and 16 fields (3.3 Mb)
+
+# Fortify the shapefile data using `fortify.shape()`:
+dat.eez.usa1 <- fortify(eez.usa) # a 180400x22 dataframe
+labels <- read.csv(file = "~/Desktop/VermilionRF/VMSURF Species ID/metadata/paper2_labels.csv")
+map_labels <- read.csv(file = "~/Desktop/VermilionRF/VMSURF Species ID/metadata/paper2_labels_2.csv")
 
 # And now we graph those ones
 
-map_passedsamples <- ggplot(data = world) +
-  geom_sf() +
+map_passedsamples <- ggplot() +
+  geom_sf(data = dat.eez.usa1, size = 1.5, color = "grey", fill = 'white')+
+  geom_sf(data = world) +
   borders("state") +
   geom_point(data = meta, aes(x = `LonDD.v2`, y = `LatDD`, col = `repunit`))+
   coord_sf(xlim = c(-115, -125.57), ylim = c(30, 48.84), expand = FALSE) +
@@ -96,11 +110,16 @@ combined <- combined %>%
 ## Plot the geographic distribution of the three populations of vermilion, 
 #### which we colloquially called A,B, and C :)
 vermilion_pop <- ggplot() +
-  geom_sf(data = world, fill = 'lightgrey') +
-  geom_sf(data = states, fill = 'lightgrey')+
-  geom_count(data = vermilion, aes(x = `LonDD.v2`, y = `LatDD`, col = `collection`))+
-  coord_sf(xlim = c(-115, -128.5), ylim = c(30, 51), expand = FALSE) +
-  scale_x_continuous(breaks = c(-125, -120))+
+  geom_sf(data = dat.eez.usa1, size = 1.5, color = "grey", fill = 'white')+
+  geom_sf(data = world) +
+  borders("state") +
+  geom_text(data = labels, aes(label = label, x = long, y = lat), size.unit = 'mm', size = 2)+
+  geom_segment(data = labels, 
+               aes(x = start.arrow.long, y = start.arrow.lat, xend = end.arrow.long, yend = end.arrow.lat), 
+               color = 'black', size = 0.5, alpha = 0.6, arrow = arrow(length = unit(0.15, "cm"))) +
+  geom_point(data = vermilion, aes(x = `LonDD.v2`, y = `LatDD`, col = `collection`), size 0.5)+
+  coord_sf(xlim = c(-113, -128), ylim = c(29, 50.5), expand = FALSE)+
+  scale_x_continuous(breaks = c(-126, -122, -118)) +
   facet_wrap(~collection)+
   scale_color_manual(values = pops_pal) +
   theme(
@@ -113,13 +132,15 @@ vermilion_pop <- ggplot() +
     axis.title.y=element_blank(),
     panel.border = element_rect(colour = "black", fill=NA),
     legend.background = element_blank(),
-    legend.box.background = element_rect(colour = "black"))
+    legend.box.background = element_rect(colour = "black"))+
+  geom_text(data = map_labels, aes(label = label, x= long, y = lat, angle = angle), color = 'lightgrey', size.unit = 'mm', size = 2)
+
 
 vermilion_pop
 
 ggsave(file = "~/Desktop/VermilionRF/VMSURF Species ID/figures/pop_struct_MS/Fig1-PopulationMap.jpeg",
        width = 174,
-       height = 100,
+       height = 110,
        units = c("mm"),
        dpi = 900)
 vermilion_pop
