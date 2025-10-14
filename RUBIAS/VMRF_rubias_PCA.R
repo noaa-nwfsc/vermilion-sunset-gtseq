@@ -7,39 +7,42 @@ library(ggrepel)
 library(data.table)
 
 # set read and write paths  -----------------------------------------------
-setwd("~/Desktop/VermilionRF/")
+setwd("~/Desktop/VermilionRF/VMSURF Species ID/")
 
 ###### these paths shouldn't change across runs unless these files move directories
 # read path for common loci RDS
-common_loci_path <- "~/Desktop/VermilionRF/rubias_inputs/rf_GTseq_common_loci.RDS"
+common_loci_path <- "~/Desktop/VermilionRF/VMSURF Species ID/rubias_inputs/rf_GTseq_common_loci.RDS"
 
 # read path for reference rockfish df for Rubias without hybrids
-rf_reference_df_sans_SVH_path <- "~/Desktop/VermilionRF/rubias_inputs/rf_reference_df_sans_SVH.RDS"
+rf_reference_df_sans_SVH_path <- "~/Desktop/VermilionRF/VMSURF Species ID/rubias_inputs/rf_reference_df_sans_SVH_avec_bocac_and_rebs.RDS"
 
 # read path for reference rockfish genind for PCA plots (with hybrid)
-rf_GTseq_panel_genind_path <- "~/Desktop/VermilionRF/rubias_inputs/rf_panel_GTseq_genind_common_loci_sans_shite_hybrids.RDS"
+rf_GTseq_panel_genind_path <- "~/Desktop/VermilionRF/VMSURF Species ID/rubias_inputs/rf_panel_GTseq_genind_common_loci_sans_shite_hybrids_avec_bocac_and_rebs.RDS"
 
 # read path for other species included on plates Trawl-13 and Trawl-14
-otro_rf_spp_sample_ID_path <- "~/Desktop/VermilionRF/rubias_inputs/2022-03-29_otro_spp._included_plates.RDS" 
+otro_rf_spp_sample_ID_path <- "~/Desktop/VermilionRF/VMSURF Species ID/rubias_inputs/2022-03-29_otro_spp._included_plates.RDS" 
 
 ######## these paths should be unique to each run
 # read path for the genotype data saved as xlsx file
-rf_GTs_path <- "~/Desktop/VermilionRF/QF_genotypes/combined_successful_genotyped_samples.xlsx"
+rf_GTs_path <- "./QF_genotypes/successful_samples_10_2025.xlsx"
 
 # write path for Rubias calls with flagged individuals
-rf_most_likely_repunit_GTseq_data_path <-  "~/Desktop/VermilionRF/assignment_output/QF_Data/rf_most_likely_repunit_GTseq_data.csv"
+rf_most_likely_repunit_GTseq_data_path <-  "~/Desktop/VermilionRF/VMSURF Species ID/assignment_output/QF_Data/rf_most_likely_repunit_GTseq_data_boc_rebs_ref_10-25.csv"
 
 # write path for Rubias calls of only flagged individuals
-rf_most_likely_repunit_GTseq_data_flagged_path <- "~/Desktop/VermilionRF/assignment_output/QF_Data/rf_most_likely_repunit_GTseq_data_flagged.csv"
+rf_most_likely_repunit_GTseq_data_flagged_path <- "~/Desktop/VermilionRF/VMSURF Species ID/assignment_output/QF_Data/rf_most_likely_repunit_GTseq_data_flagged_boc_rebs_ref_10-25.csv"
 
 # write path for PCA with flagged individuals and high quality rf panel
-flagged_individuals_with_panel_PCA_path <- "~/Desktop/VermilionRF/assignment_output/QF_PCAs/flagged_individuals_with_panel_PCA.pdf"
+flagged_individuals_with_panel_PCA_path <- "~/Desktop/VermilionRF/VMSURF Species ID/assignment_output/QF_PCAs/flagged_individuals_with_panel_PCA_boc_rebs_ref_10-25.pdf"
 
 # write path for PCA with flagged individuals and high quality rf panel
-flagged_individuals_with_panel_PCA_path_unlabeled <- "~/Desktop/VermilionRF/assignment_output/QF_PCAs/flagged_individuals_with_panel_unlabeled_PCA.pdf"
+flagged_individuals_with_panel_PCA_path_unlabeled <- "~/Desktop/VermilionRF/VMSURF Species ID/assignment_output/QF_PCAs/flagged_individuals_with_panel_unlabeled_PCA_boc_rebs_ref_10-25.pdf"
 
 # write path for PCA with QF individuals and high quality rf panel
-QF_individuals_with_panel_PCA_path <- "~/Desktop/VermilionRF/assignment_output/QF_PCAs/QF_individuals_with_panel_PCA.pdf"
+QF_individuals_with_panel_PCA_path <- "~/Desktop/VermilionRF/VMSURF Species ID/assignment_output/QF_PCAs/QF_individuals_with_panel_PCA_boc_rebs_ref_10-25.pdf"
+
+QF_individuals_with_panel_PCA_path_current_year_only <- "~/Desktop/VermilionRF/VMSURF Species ID/assignment_output/QF_PCAs/QF_individuals_with_panel_PCA_boc_rebs_ref_10-25_2024ONLY.pdf"
+
 
 # read in genotypes -------------------------------------------------------
 
@@ -47,29 +50,30 @@ QF_individuals_with_panel_PCA_path <- "~/Desktop/VermilionRF/assignment_output/Q
 # `read_csv` has odd behavior of changing values of every other column of loci with "0"
 # to "00" - has consequences downstream that are avoided by reading in with `read_excel`
 rf_GTs_QF <- read_excel(path = rf_GTs_path) %>%
-  rename_with( ~ gsub(".", "_", .x, fixed = TRUE))
+  rename_with( ~ gsub(".", "_", .x, fixed = TRUE)) %>%
+  subset()
+
+#rf_GTs_QF$sample_ID <- sub(".*_", "", rf_GTs_QF$sample_ID)
 
 colnames(rf_GTs_QF)[3:6] <- c("Raw Reads", "On-Target Reads","% On-Target","% GT")
 
-rf_GTs_QF %>% 
-  group_by(Plate) %>%
-  count()
-
-non_verm <- read.csv('~/Desktop/VermilionRF/metadata/non-verm-species.csv', 
+# ======================== EDIT (03/2024) =====================================
+##Remove non-vermilion sunsets from previous runs
+non_verm <- read.csv('~/Desktop/VermilionRF/VMSURF Species ID/metadata/non-verm-species.csv', 
                      header = F)
 
 #Remove non-vermilion, sunset or canary
-rf_GTs_QF <- rf_GTs_QF[!rf_GTs_QF$Sample_ID %in% non_verm$V1,]
+rf_GTs_QF <- rf_GTs_QF[!rf_GTs_QF$sample_ID %in% non_verm$V1,]
 
 
 # create list of columns to drop for conversion to genind 
-drop_col <- c("Sample_ID", "Plate" ,"Raw Reads", "On-Target Reads","% On-Target","% GT" ,"IFI")
+drop_col <- c("sample_ID", "Plate" ,"Raw Reads", "On-Target Reads","% On-Target","% GT" ,"IFI")
 
 # pull plate column & sample_ID to match up after file format conversions below
 rf_GTs_cols <- rf_GTs_QF %>%
-  select(Sample_ID, Plate) %>%
+  select(sample_ID, Plate) %>%
   mutate(pop = rep(NA, times=nrow(rf_GTs_QF)),
-         Sample_ID = as.character(Sample_ID))
+         Sample_ID = as.character(sample_ID))
 # include individual sample names and pop as NA
 
 # df2genind drops any rows (i.e., individuals with missing data)
@@ -79,14 +83,19 @@ rf_GTs_genind <- df2genind(rf_GTs_QF %>%
                              select(-drop_col), 
                            NA.char = "0", ploidy = 2, sep = "",
                            pop = rf_GTs_cols$pop, ind.names = rf_GTs_cols$Sample_ID)
+#This may output a warning --- ignore it
+
+# ======================== EDIT (03/2024) =====================================
+# I removed these two lines because bocaccio rf do sequence well at this locus, 
+# and therefore can be very informative when we are ruling out mis-ID
 
 # drop unwanted loci (i.e., "SebC_36504") see `rockfish_gtseq_messing.R`
 # SebC_36504 did not genotype in most samples across runs
-common_loci <- readRDS(file = common_loci_path)
+#common_loci <- readRDS(file = common_loci_path)
 
 # drop "SebC_36504" 
 # likely already dropped from df2genind because of total lack of calls
-rf_GTs_genind <- rf_GTs_genind[loc=common_loci]
+#rf_GTs_genind <- rf_GTs_genind[loc=common_loci]
 
 # convert the genind back into a dataframe in prep for Rubias
 #  split alleles into two columns (rubias requires this)
@@ -111,8 +120,39 @@ rf_GTs_df <- left_join(rownames_to_column(rf_GTs_df, var = "Sample_ID") %>%
 
 # read in reference rockfish dataset for Rubias
 # used to call individuals in `rf_GTs_df`
-rf_reference_df_sans_SVH <- readRDS(file = rf_reference_df_sans_SVH_path)
+rf_reference_df_sans_SVH <- readRDS(file = rf_reference_df_sans_SVH_path)%>%
+  rename_with( ~ gsub(".", "_", .x, fixed = TRUE)) %>%
+  rename_with( ~ gsub("_1", ".1", .x, fixed = TRUE)) %>%
+  rename_with( ~ gsub("_2", ".2", .x, fixed = TRUE)) %>%
+  rename_with( ~ gsub("SebC.1", "SebC_1", .x, fixed = TRUE)) %>%
+  rename_with( ~ gsub("SV.1", "SV_1", .x, fixed = TRUE))%>%
+  rename_with( ~ gsub("SebC.2", "SebC_2", .x, fixed = TRUE)) %>%
+  rename_with( ~ gsub("SV.2", "SV_2", .x, fixed = TRUE))%>%
+  rename_with( ~ gsub("Sni_scaffold.1287_bp76223_76379.1", "Sni_scaffold_1287_bp76223_76379_1", .x, fixed = TRUE)) %>%
+  rename_with( ~ gsub("Sni_scaffold.1287_bp76223_76379.2", "Sni_scaffold_1287_bp76223_76379_2", .x, fixed = TRUE)) %>%
+  rename_with( ~ gsub("Sni_scaffold_931_BP109316.109356.109540.1", "Sni_scaffold_931_BP109316_109356_109540_1", .x, fixed = TRUE)) %>%
+  rename_with( ~ gsub("Sni_scaffold_931_BP109316.109356.109540.2", "Sni_scaffold_931_BP109316_109356_109540_2", .x, fixed = TRUE))
 
+### Match column names
+which(!colnames(rf_reference_df_sans_SVH) %in% colnames(rf_GTs_df))
+reorder_idx <- match(colnames(rf_GTs_df), colnames(rf_reference_df_sans_SVH)) 
+rf_reference_df_sans_SVH <- rf_reference_df_sans_SVH[,reorder_idx]
+
+
+#make sure plate numbers are accurate (none should be > 96)
+table(rf_GTs_QF$Plate)
+
+#which(!colnames(rf_reference_df_sans_SVH) == colnames(rf_GTs_df))
+
+##Test if reference panel can 'self-assign' aka assign each individual to its own reference
+#sa_rockfish <- self_assign(reference = rf_reference_df_sans_SVH, gen_start_col = 5)
+#print(sa_rockfish, n = 100)
+#options(scipen=999)
+#sa_to_repu <- sa_rockfish %>%
+#  group_by(indiv, collection, repunit, inferred_repunit) %>%
+#  summarise(repu_scaled_like = sum(scaled_likelihood))
+
+#write.csv(sa_to_repu, file = '~/Desktop/VermilionRF/VMSURF Species ID/assignment_output/quality_of_reference_bocac_and_rebs.csv')
 # estimate assignment with Rubias -----------------------------------------
 
 # run Rubias for quality filtered individuals using the reference panel
@@ -151,11 +191,11 @@ rf_most_likely_repunit <- rf_indiv_post_sum_repunit %>%
 # individuals that were dropped by quality filters and did not undergo assignment 
 # estiamtes in Rubias will have missing data (i.e., NA or NULL) for Rubias outputs
 rf_most_likely_repunit_GTseq_data <- left_join(rf_GTs_QF %>%
-                                                 select("Sample_ID" ,"Raw Reads", "On-Target Reads","% On-Target","% GT" ,"IFI", "Plate"),
+                                                 select("sample_ID" ,"Raw Reads", "On-Target Reads","% On-Target","% GT" ,"IFI", "Plate"),
                                                rf_most_likely_repunit %>% 
-                                                 rename(Sample_ID = indiv) %>%
+                                                 rename(sample_ID = indiv) %>%
                                                  mutate(Z_flag = if_else(z_score < -10, TRUE, FALSE)), 
-                                               by="Sample_ID")
+                                               by="sample_ID")
 
 # write csv (includes flagged)
 # flagged inds should be inspected via PCA and
@@ -166,7 +206,8 @@ write_csv(rf_most_likely_repunit_GTseq_data,
 good_samples <- rf_most_likely_repunit_GTseq_data %>%
           filter(Z_flag == "FALSE")
 
-table(good_samples$collection)
+table(good_samples$Plate)
+table(good_samples$repunit)
 
 # write csv of just flagged
 write_csv(rf_most_likely_repunit_GTseq_data %>%
@@ -177,7 +218,7 @@ write_csv(rf_most_likely_repunit_GTseq_data %>%
 # individuals flagged for inspection in a PCA with panel inds should be manually called
 rf_flagged_inds <- rf_most_likely_repunit_GTseq_data %>%
   filter(Z_flag == "TRUE") %>% 
-  pull(Sample_ID)
+  pull(sample_ID)
 
 # PCA  --------------------------------------------------------------------
 # the other rf species included for testing (blue, deacon, blackspotted, & rougheye)
@@ -187,6 +228,14 @@ otro_rf_spp_sample_ID <- readRDS(file = otro_rf_spp_sample_ID_path)
 # panel of high quality genotyped individuals used for marker development and testing
 # excludes two previously ID'd hybrids (out of 3) that yielded low genotyping rate in panel tests
 rf_GTseq_panel_genind <- readRDS(file = rf_GTseq_panel_genind_path)
+
+# drop unwanted loci (i.e., "SebC_36504") see `rockfish_gtseq_messing.R`
+# SebC_36504 did not genotype in most samples across runs
+common_loci <- readRDS(file = common_loci_path)
+
+# drop "SebC_36504" 
+# likely already dropped from df2genind because of total lack of calls
+rf_GTs_genind <- rf_GTs_genind[loc=common_loci]
 
 # flagged individual(s) genind 
 rf_flagged_genind <- rf_GTs_genind[rf_flagged_inds,]
@@ -232,9 +281,9 @@ test1 <- rf_reference_df_sans_SVH %>%
   mutate(across(collection, na_if, "NA"))
 test1 <- rbind(test1, tibble("VM-536", "SVH",
                     .name_repair = ~ c("sample_id", "collection")))
-rf_flagged_panel_species <- left_join(panel, test1)
+rf_flagged_panel_species <- merge(panel, test1)
 
-rf_flagged_panel_pcscores <- left_join(rf_flagged_panel_pcscores, rf_flagged_panel_species)
+rf_flagged_panel_pcscores <- merge(rf_flagged_panel_pcscores, rf_flagged_panel_species, all = T)
 
 rf_flagged_panel_eig <- round((rf_flagged_panel_GTs_pca$eig/(sum(rf_flagged_panel_GTs_pca$eig)))*100,2)
 
@@ -243,33 +292,45 @@ rf_flagged_panel_eig <- round((rf_flagged_panel_GTs_pca$eig/(sum(rf_flagged_pane
 rf_flagged_panel_pcscores <- rf_flagged_panel_pcscores %>%
   mutate(species = as.character(species),
          species = ifelse(is.na(species), "flagged", species),
-         species = factor(species, levels = c("flagged", "sunset", "vermilion", "sun_verm_hybrid", "canary")),
+         species = factor(species, levels = c("flagged", "sunset", 
+                                              "vermilion", "sun_verm_hybrid", 
+                                              "canary", 'bocaccio', 'rebs')),
          collection = ifelse(is.na(collection), "F", collection),
-         collection = factor(collection, levels = c("F", "S", "V-A", "V-B", "V-C", "SVH", "C")))
+         collection = factor(collection, levels = c("F", "S", "V-A", "V-B", 
+                                                    "V-C", "SVH", "C", 'B',
+                                                    'R')))
 
 # plot
 species_colors <- c("sunset" = '#ff7f00',
-                    "vermilion" = '#e31a1c', 
+                    "vermilion" = '#61599d', 
                     "sun_verm_hybrid" = '#1f78b4', 
-                    "canary" = '#b2df8a')
+                    "canary" = '#b2df8a',
+                    'bocaccio' = '#FFCC00',
+                    'rebs' = '#e31a1c')
 pop_colors <- c("S" = '#ff7f00',
                 "V-A" = '#a6cee3',
                 "V-B" = '#33a02c',
                 "V-C" = '#cab2d6',
                 "SVH" = '#1f78b4',
-                "C" = '#b2df8a')
+                "C" = '#b2df8a',
+                "B" = '#FFCC00',
+                'R' = '#e31a1c')
 species_colors_w_flagged <- c("sunset" = '#ff7f00',
-                              "vermilion" = '#e31a1c', 
+                              "vermilion" = '#61599d', 
                               "sun_verm_hybrid" = '#1f78b4', 
                               "canary" = '#b2df8a',
-                              'flagged' = 'black')
+                              'flagged' = 'black',
+                              'bocaccio' = '#FFCC00',
+                              'rebs' = '#e31a1c')
 pop_colors_w_flagged <- c("S" = '#ff7f00',
                 "V-A" = '#a6cee3',
                 "V-B" = '#33a02c',
                 "V-C" = '#cab2d6',
                 "SVH" = '#1f78b4',
                 "C" = '#b2df8a',
-                'F' = 'black')
+                'F' = 'black',
+                "B" = '#FFCC00',
+                'R' = '#e31a1c')
 
 pdf(file = flagged_individuals_with_panel_PCA_path,
     width = 7, height = 6)
@@ -330,7 +391,7 @@ rf_QF_panel_GTs_scaled <- scaleGen(rf_QF_panel_genind, NA.method="mean")
 rf_QF_panel_GTs_pca <- dudi.pca(rf_QF_panel_GTs_scaled, cent = FALSE, scale = FALSE, scannf = F, nf = 10)
 
 ## visualize eigenvalues
-# barplot(rf_QF_panel_GTs_pca$eig[1:50], main = "PCA eigenvalues")
+barplot(rf_QF_panel_GTs_pca$eig[1:50], main = "PCA eigenvalues")
 
 # save PCA results as data frame
 rf_QF_panel_pcscores <- as.data.frame(rf_QF_panel_GTs_pca$li) %>%
@@ -347,12 +408,17 @@ rf_QF_panel_species <-  full_join(rf_most_likely_repunit %>%
                                     filter(sample_id %in% indNames(rf_GTseq_panel_genind)) %>%
                                     mutate(assignment = "panel"))
 
-rf_QF_panel_pcscores <- left_join(rf_QF_panel_pcscores, rf_QF_panel_species)
+rf_QF_panel_pcscores <- merge(rf_QF_panel_pcscores, rf_QF_panel_species, all = T)
 
 # for both collection and species
 rf_QF_panel_pcscores <- rf_QF_panel_pcscores %>%
-  mutate(species = factor(species, levels = c( "sunset", "vermilion", "sun_verm_hybrid", "canary")),
-         collection = factor(collection, levels = c( "S", "V-A", "V-B", "V-C", "SVH", "C")),
+  mutate(species = factor(species, levels = c( "sunset", "vermilion", 
+                                               "sun_verm_hybrid", "canary", 
+                                               'bocaccio', 'rebs')),
+         collection = factor(collection, levels = c( "S", "V-A", 
+                                                     "V-B", "V-C", 
+                                                     "SVH", "C", 
+                                                     'B', 'R')),
          assignment = factor(assignment, levels = c("panel","rubias")))
 
 # Calculate percent eigenvalues for each principle component
@@ -379,3 +445,83 @@ ggplot(rf_QF_panel_pcscores, aes(Axis1, Axis3)) +
   ggtitle("QF individuals with panel")+
   scale_color_manual(values = pop_colors) 
 dev.off()
+
+
+
+samples_2024 <- c('TRAWL28', 'HL341', 'HL342','HL343','HL344',
+                  'HL345','HL346','HL347','HL348','HL349','HL350',
+                  'HL351','HL352','HL353','HL354','HL355','HL356',
+                  'HL357','HL358','HL359','HL360','HL361','HL362',
+                  'HL363', 'HL364', 'HL365')		
+
+samples_2024_ids <- rf_GTs_cols %>%
+  subset(Plate %in% samples_2024)
+
+
+rf_flagged_panel_pcscores_2024 <- rf_flagged_panel_pcscores %>%
+  subset(sample_id %in% samples_2024_ids$sample_ID | collection != 'F')
+
+pdf(file = QF_individuals_with_panel_PCA_path_current_year_only,
+    width = 7, height = 6)
+
+ggplot(rf_flagged_panel_pcscores_2024, aes(Axis1, Axis2)) + 
+  geom_point(aes(col=species, shape=species)) +
+  scale_shape_manual(values=1:nlevels(rf_flagged_panel_pcscores_2024$species)) +
+  xlab(paste0("PC1 (",rf_flagged_panel_eig[1],")%", collapse = "")) + 
+  ylab(paste0("PC2 (",rf_flagged_panel_eig[2],")%", collapse = "")) +  
+  theme_grey(base_size = 10) +
+  geom_text_repel(data= subset(rf_flagged_panel_pcscores_2024, sample_id %in% rf_flagged_inds),
+                  aes(label = sample_id),
+                  size = 2, max.overlaps = 100,  #increase if there are >100 overlap inds
+                  force = 4) +
+  ggtitle("Flagged individuals with panel - 2024 samples")+
+  scale_color_manual(values = species_colors_w_flagged)
+
+rf_QF_panel_pcscores_2024 <- rf_QF_panel_pcscores %>%
+  subset(sample_id %in% samples_2024_ids$sample_ID | assignment == 'panel')
+
+ggplot(rf_QF_panel_pcscores_2024, aes(Axis1, Axis2)) + 
+  geom_point(aes(col=species, shape=assignment)) +
+  scale_shape_manual(values=1:nlevels(rf_QF_panel_pcscores_2024$assignment)) +
+  xlab(paste0("PC1 (",rf_QF_panel_eig[1],")%", collapse = "")) + 
+  ylab(paste0("PC2 (",rf_QF_panel_eig[2],")%", collapse = "")) +  
+  theme_grey(base_size = 10) +
+  ggtitle("QF individuals with panel - 2024 samples")+
+  scale_color_manual(values = species_colors)
+
+dev.off()
+
+
+samples_hybrid_redos_ids <- c('H-04-MI-V0831', 'H-08-AG-V0155', 'H-09-CN-AG-A0454',
+'H-10-CN-AG-A0014','H-11-MI-V0401','H-11-MI-V0624','H-13-MI-V0318','H-14-AG-V0061',
+'H-14-MI-V0534','H-15-TO-V0152','H-19-AG-V0469','H-19-TO-V0001','H-21-AG-V0586',
+'H-21-AG-V0756','H-21-MI-V0237','H-21-TO-V0194','H-21-TO-V0319','H-21-TO-V0681',
+'H-22-CN-AG-A0142','T-15-NA-0230','T-17-MJ-CN-0053')
+
+rf_flagged_panel_pcscores_hybrid_redos <- rf_flagged_panel_pcscores %>%
+  subset(sample_id %in% samples_hybrid_redos_ids| collection != 'F')
+
+ggplot(rf_flagged_panel_pcscores_hybrid_redos, aes(Axis1, Axis2)) + 
+  geom_point(aes(col=species, shape=species)) +
+  scale_shape_manual(values=1:nlevels(rf_flagged_panel_pcscores_hybrid_redos$species)) +
+  xlab(paste0("PC1 (",rf_flagged_panel_eig[1],")%", collapse = "")) + 
+  ylab(paste0("PC2 (",rf_flagged_panel_eig[2],")%", collapse = "")) +  
+  theme_grey(base_size = 10) +
+  geom_text_repel(data= subset(rf_flagged_panel_pcscores_hybrid_redos, sample_id %in% rf_flagged_inds),
+                  aes(label = sample_id),
+                  size = 2, max.overlaps = 100,  #increase if there are >100 overlap inds
+                  force = 4) +
+  ggtitle("Flagged individuals with panel - 2023 samples")+
+  scale_color_manual(values = species_colors_w_flagged)
+
+rf_QF_panel_pcscores_hybrid_redos <- rf_QF_panel_pcscores %>%
+  subset(sample_id %in% samples_hybrid_redos_ids | assignment == 'panel')
+
+ggplot(rf_QF_panel_pcscores_hybrid_redos, aes(Axis1, Axis2)) + 
+  geom_point(aes(col=species, shape=assignment)) +
+  scale_shape_manual(values=1:nlevels(rf_QF_panel_pcscores_hybrid_redos$assignment)) +
+  xlab(paste0("PC1 (",rf_QF_panel_eig[1],")%", collapse = "")) + 
+  ylab(paste0("PC2 (",rf_QF_panel_eig[2],")%", collapse = "")) +  
+  theme_grey(base_size = 10) +
+  ggtitle("QF individuals with panel - 2023 samples")+
+  scale_color_manual(values = species_colors)
