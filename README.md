@@ -25,7 +25,7 @@ This script needs 4 inputs:
 5. (optional) a non-reference rockfish genind to visualize flagged species with other rockfish species <- otro_rf_spp_sample_ID_path
 
 ### 3. Biological Data merging
-Merged biological data collected in the field with genetic species ID. [Script here]()
+Merged biological data collected in the field with genetic species ID. [Script here](https://github.com/noaa-nwfsc/vermilion-sunset-gtseq/blob/main/METADATA_FILTERING_AND_MERGING/Merge_Rubias_Structure_NewHybrids.R)
 
 ### 4. Statistics and Graphics
 Code for all analyses and figures for the manuscript are included in [this folder](https://github.com/anita-wray/vermilion_sunset_gtseq/tree/main/FIGURES_STATISTICS). Major figure results and included below.
