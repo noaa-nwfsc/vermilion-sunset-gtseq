@@ -10,6 +10,10 @@ Species ID utilized Rubias, which was altered to allow for species specific call
 
 This is an ongoing project and will be updated annually as more samples are sequenced.
 
+## Publications:
+
+1. Harms, J.H., Wray, A., Hyde, J.R., Longo, G.C., Hempelmann, J.A., Elz, A.E., Barnhart, R.M., Benante, J.A., Chappell, A.C., Frey, P.H., Jones, C.L., Kamikawa, B., Keller, A.A., Lagmay, R., Lam, L.S., McDonald, P.J., Park, L., Ramón-Laca, A.,  Rodriguez, O., Simon, V.H., Thompson, M., Villareal, J., Nichols, K.M., A comparison of the biology and distribution of vermilion rockfish (<i>Sebastes miniatus</i>) and its cryptic pair, sunset rockfish (<i>S. crocotulus</i>) along the US West Coast. Fisheries Research, 290, 107504. [Link](https://doi.org/10.1016/j.fishres.2025.107504)
+
 
 ## Methods:
 
